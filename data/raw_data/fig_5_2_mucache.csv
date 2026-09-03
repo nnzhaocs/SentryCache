@@ -1,0 +1,4 @@
+condition,trial,steady,cluster_post_hr,cluster_drop_pp,first_seen_s,T_warmup_s,errors
+mucache,1,0.786,0.844,-5.80,12,32,0
+mucache,2,0.837,0.857,-2.01,11,28,0
+mucache,3,0.831,0.848,-1.64,15,39,0

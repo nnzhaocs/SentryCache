@@ -1,0 +1,10 @@
+condition,trial,steady_hr,cluster_post_hr,cluster_drop_pp,first_seen_s,T_warmup_s,errors
+stock,1,0.814,0.811,0.28,12,31,0
+stock,2,0.803,0.804,-0.02,12,10,0
+stock,3,0.832,0.802,3.05,12,43,0
+sentrycache,1,0.841,0.807,3.39,11,33,0
+sentrycache,2,0.845,0.814,3.13,11,32,0
+sentrycache,3,0.836,0.809,2.68,12,21,0
+np,1,0.820,0.804,1.69,12,33,0
+np,2,0.840,0.805,3.52,12,37,0
+np,3,0.831,0.803,2.82,12,41,0

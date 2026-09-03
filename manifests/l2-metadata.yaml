@@ -1,0 +1,83 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentrycache-l2-metadata
+  namespace: sc-demo
+  labels:
+    app: sentrycache-l2-metadata
+    component: sentrycache-control
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sentrycache-l2-metadata
+  template:
+    metadata:
+      labels:
+        app: sentrycache-l2-metadata
+        component: sentrycache-control
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --maxmemory
+            - 64mb
+            - --maxmemory-policy
+            - noeviction
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --bind
+            - 0.0.0.0
+            - --protected-mode
+            - "no"
+          ports:
+            - containerPort: 6379
+              name: client
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "16Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentrycache-l2-metadata
+  namespace: sc-demo
+  labels:
+    app: sentrycache-l2-metadata
+spec:
+  type: ClusterIP
+  selector:
+    app: sentrycache-l2-metadata
+  ports:
+    - name: client
+      port: 6379
+      targetPort: 6379
+      protocol: TCP

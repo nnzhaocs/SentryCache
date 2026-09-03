@@ -1,0 +1,83 @@
+---
+# Single shared cache Redis (allkeys-lfu, 32 MB).
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: shared-cache, namespace: sc-eval}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: shared-cache}}
+  template:
+    metadata: {labels: {app: shared-cache}}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          imagePullPolicy: IfNotPresent
+          args: ["--maxmemory","32mb","--maxmemory-policy","allkeys-lfu","--save","","--appendonly","no","--bind","0.0.0.0","--protected-mode","no","--databases","16"]
+          ports: [{containerPort: 6379}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: shared-cache, namespace: sc-eval}
+spec:
+  type: ClusterIP
+  selector: {app: shared-cache}
+  ports: [{port: 6379, targetPort: 6379}]
+---
+# ConfigMap with the Flask app code (mounted into pods).
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: timeline-code, namespace: sc-eval}
+data:
+  app.py: |
+    PLACEHOLDER_REPLACED_BY_SCRIPT
+---
+# Timeline service. Patched at runtime to flip VERSION / REDIS_DB.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timeline
+  namespace: sc-eval
+  labels: {app: timeline, sc-deployment: timeline}
+spec:
+  replicas: 3
+  strategy: {type: RollingUpdate, rollingUpdate: {maxSurge: 1, maxUnavailable: 0}}
+  selector: {matchLabels: {app: timeline}}
+  template:
+    metadata:
+      labels: {app: timeline, sc-deployment: timeline, sc-version: v1}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              pip install --quiet --no-cache-dir flask redis 2>/dev/null
+              exec python3 /code/app.py
+          env:
+            - {name: VERSION, value: "v1"}
+            - {name: REDIS_DB, value: "0"}
+            - {name: REDIS_HOST, value: "shared-cache"}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          ports: [{containerPort: 8080}]
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+          volumeMounts: [{name: code, mountPath: /code}]
+      volumes:
+        - {name: code, configMap: {name: timeline-code}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: timeline, namespace: sc-eval}
+spec:
+  type: ClusterIP
+  selector: {app: timeline}
+  ports: [{port: 80, targetPort: 8080}]

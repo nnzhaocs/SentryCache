@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sc-eval-baselines
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: cache-svc-mucache-code, namespace: sc-eval-baselines}
+data:
+  app.py: |
+    PLACEHOLDER
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-svc-mucache
+  namespace: sc-eval-baselines
+  labels: {app: cache-svc-mucache}
+spec:
+  replicas: 3
+  strategy: {type: RollingUpdate, rollingUpdate: {maxSurge: 0, maxUnavailable: 1}}
+  selector: {matchLabels: {app: cache-svc-mucache}}
+  template:
+    metadata:
+      labels: {app: cache-svc-mucache}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: python:3.11-slim
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install --quiet --no-cache-dir flask cachetools 2>/dev/null
+              exec python3 /code/app.py
+          env:
+            - {name: MUCACHE_SIZE, value: "2000"}
+            - {name: BACKEND_MS, value: "200"}
+            - {name: VALUE_BYTES, value: "8192"}
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+          ports: [{containerPort: 8080}]
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 5
+            periodSeconds: 2
+            failureThreshold: 30
+          volumeMounts: [{name: code, mountPath: /code}]
+      volumes:
+        - {name: code, configMap: {name: cache-svc-mucache-code}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: cache-svc-mucache, namespace: sc-eval-baselines}
+spec:
+  type: ClusterIP
+  selector: {app: cache-svc-mucache}
+  ports: [{port: 80, targetPort: 8080}]

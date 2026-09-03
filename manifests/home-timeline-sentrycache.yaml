@@ -1,0 +1,118 @@
+---
+# Treatment (SentryCache proxy): app -> proxy(:6379) -> redis-sidecar(:6380).
+# Same selector key as the cluster variant so the existing home-timeline-service
+# Service routes to it when only this variant is scaled up.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-timeline-service-c-sentrycache
+  namespace: sc-demo
+  labels:
+    io.kompose.service: home-timeline-service-c
+    variant: sentrycache-proxy
+    component: sentrycache-eval
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      io.kompose.service: home-timeline-service-c
+      variant: sentrycache-proxy
+  template:
+    metadata:
+      labels:
+        io.kompose.service: home-timeline-service-c
+        variant: sentrycache-proxy
+        component: sentrycache-eval
+    spec:
+      hostname: home-timeline-service-c-sentrycache
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: home-timeline-service
+          image: deathstarbench/social-network-microservices:latest
+          imagePullPolicy: IfNotPresent
+          command: ["HomeTimelineService"]
+          volumeMounts:
+            - mountPath: /social-network-microservices/config
+              name: config
+        - name: proxy
+          image: sentrycache-proxy:m1-go
+          imagePullPolicy: Never
+          env:
+            - name: LISTEN_HOST
+              value: "127.0.0.1"
+            - name: LISTEN_PORT
+              value: "6379"
+            - name: PEER_FETCH_PORT
+              value: "6378"
+            - name: UPSTREAM_REDIS_HOST
+              value: "127.0.0.1"
+            - name: UPSTREAM_REDIS_PORT
+              value: "6380"
+            - name: VERSION_TAG
+              value: "v_default"
+            - name: L2_INDEX_HOST
+              value: "sentrycache-l2-metadata.sc-demo.svc.cluster.local"
+            - name: L2_INDEX_PORT
+              value: "6379"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 6379
+              name: app
+            - containerPort: 6378
+              name: peerfetch
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+        - name: redis-sidecar
+          image: redis:7.2-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - 64mb
+            - --maxmemory-policy
+            - allkeys-lru
+            - --port
+            - "6380"
+            - --bind
+            - 127.0.0.1
+            - --protected-mode
+            - "no"
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.62.0-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: REDIS_ADDR
+              value: "redis://127.0.0.1:6380"
+          ports:
+            - containerPort: 9121
+              name: metrics
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: home-timeline-svc-config-sentrycache
+          name: config

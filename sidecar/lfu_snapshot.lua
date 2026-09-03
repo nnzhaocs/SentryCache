@@ -1,0 +1,3 @@
+-- LFU snapshot helper for sibling polling (paper §IV-B2).
+-- Iterates SCAN, returns (key, OBJECT FREQ, OBJECT ENCODING/serializedlength) tuples
+-- so the controller can compute score = f_hat(k) / size(k) without copying the values.

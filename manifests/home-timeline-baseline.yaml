@@ -1,0 +1,75 @@
+---
+# Baseline (no proxy): app + sidecar redis + redis_exporter.
+# Identical to the original standalone variant but pinned to a single replica
+# and labelled so the home-timeline-service Service can pick it up while we
+# scale the cluster variant to 0 for the M1 13.3 hard-gate test.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: home-timeline-service-c-baseline
+  namespace: sc-demo
+  labels:
+    io.kompose.service: home-timeline-service-c
+    variant: baseline-standalone
+    component: sentrycache-eval
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      io.kompose.service: home-timeline-service-c
+      variant: baseline-standalone
+  template:
+    metadata:
+      labels:
+        io.kompose.service: home-timeline-service-c
+        variant: baseline-standalone
+        component: sentrycache-eval
+    spec:
+      hostname: home-timeline-service-c-baseline
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: home-timeline-service
+          image: deathstarbench/social-network-microservices:latest
+          imagePullPolicy: IfNotPresent
+          command: ["HomeTimelineService"]
+          volumeMounts:
+            - mountPath: /social-network-microservices/config
+              name: config
+        - name: redis-sidecar
+          image: redis:7.2-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - 64mb
+            - --maxmemory-policy
+            - allkeys-lru
+            - --port
+            - "6379"
+            - --bind
+            - 127.0.0.1
+            - --protected-mode
+            - "no"
+          ports:
+            - containerPort: 6379
+              name: client
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.62.0-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9121
+              name: metrics
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: home-timeline-svc-config-sentrycache
+          name: config

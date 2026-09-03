@@ -1,0 +1,32 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: l2-metadata
+  namespace: sc-eval
+  labels:
+    app: l2-metadata
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: l2-metadata}}
+  template:
+    metadata: {labels: {app: l2-metadata}}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          imagePullPolicy: IfNotPresent
+          args: ["--maxmemory","64mb","--maxmemory-policy","noeviction","--save","","--appendonly","no","--bind","0.0.0.0","--protected-mode","no"]
+          ports: [{containerPort: 6379, name: client}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: l2-metadata
+  namespace: sc-eval
+spec:
+  type: ClusterIP
+  selector: {app: l2-metadata}
+  ports:
+    - {name: client, port: 6379, targetPort: 6379}

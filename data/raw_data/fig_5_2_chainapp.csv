@@ -1,0 +1,13 @@
+depth,condition,trial,ref_steady,cluster_post_hr,cluster_drop_pp,T_warmup_s
+1,stock,1,1.000,0.999,0.09,1
+1,stock,2,1.000,0.999,0.09,1
+1,stock,3,1.000,0.999,0.09,1
+1,sentrycache,1,1.000,0.999,0.09,1
+1,sentrycache,2,1.000,0.999,0.09,1
+1,sentrycache,3,1.000,0.999,0.09,1
+3,stock,1,1.000,1.000,0.02,0
+3,stock,2,1.000,0.999,0.09,1
+3,stock,3,1.000,1.000,0.00,0
+3,sentrycache,1,1.000,1.000,0.00,0
+3,sentrycache,2,1.000,1.000,0.02,1
+3,sentrycache,3,1.000,0.999,0.09,1

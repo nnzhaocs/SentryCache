@@ -1,0 +1,10 @@
+condition,trial,pre_steady_qps,post_peak_30s,post_peak_first5s,spike_ratio_30s,cum_misses_30s,cum_misses_60s
+stock,1,38.4,50,42,1.30,1228,2410
+stock,2,40.4,50,49,1.24,1280,2475
+stock,3,40.0,50,38,1.25,1182,2375
+sentrycache,1,38.8,50,50,1.29,1284,2454
+sentrycache,2,42.2,50,50,1.18,1300,2549
+sentrycache,3,38.8,50,50,1.29,1292,2542
+np,1,40.0,50,50,1.25,1297,2528
+np,2,38.0,50,50,1.32,1192,2491
+np,3,40.8,50,46,1.23,1252,2451

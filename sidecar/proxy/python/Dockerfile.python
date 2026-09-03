@@ -1,0 +1,6 @@
+FROM python:3.11-slim
+RUN pip install --no-cache-dir 'redis>=5.0.0,<6.0.0' uvloop==0.22.1
+COPY proxy.py /app/proxy.py
+WORKDIR /app
+USER nobody
+CMD ["python3", "-u", "proxy.py"]
